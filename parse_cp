@@ -1,0 +1,160 @@
+#!/sbin/python
+import re
+from openpyxl import load_workbook
+
+HEADERS = [
+    "Problem URL", "Status", "Submit Count",
+    "Reading Time", "Thinking Time", "Coding Time", "Debug Time",
+    "Total Time", "Problem Level", "By Yourself", "Category", "Comments"
+]
+
+DEFAULT_DATA = {
+    'problem_code': '',
+    'status': 'AC',
+    'submit_count': 0,
+    'reading_time': 0,
+    'thinking_time': 0,
+    'coding_time': 0,
+    'debug_time': 0,
+    'problem_level': 0,
+    'by_yourself': 'yes',
+    'category': '',
+    'comments': ''
+}
+
+
+
+def parse_number(value):
+    if not value or not str(value).strip():
+        return 0
+    try:
+        return int(value) if str(value).isdigit() else float(value)
+    except ValueError:
+        return 0
+
+
+def parse_cp_header(header_text):
+    data = DEFAULT_DATA.copy()
+
+    if url_match := re.search(r'URL: (.+)', header_text):
+        data['problem_code'] = url_match.group(1).strip()
+
+    numeric_fields = ['reading_time', 'thinking_time', 'coding_time',
+                      'debug_time', 'submit_count', 'problem_level']
+    for field in numeric_fields:
+        pattern = f'{field.replace("_", " ").title()}\\s*:?\\s*(\\d*\\.?\\d*)'
+        if match := re.search(pattern, header_text, re.IGNORECASE):
+            data[field] = parse_number(match.group(1))
+
+    text_fields = ['category', 'comments']
+    for field in text_fields:
+        pattern = f'{field.title()}\\s*:?\\s*(.+?)(?=\\n|$)'
+        if match := re.search(pattern, header_text, re.IGNORECASE):
+            data[field] = match.group(1).strip()
+
+    total_time = sum(data[field] for field in
+                     ['reading_time', 'thinking_time', 'coding_time', 'debug_time'])
+
+    return [
+        data['problem_code'], data['status'], data['submit_count'],
+        data['reading_time'], data['thinking_time'], data['coding_time'],
+        data['debug_time'], total_time, data['problem_level'],
+        data['by_yourself'], data['category'], data['comments']
+    ]
+
+
+
+def normalize_url(url):
+    url = url.strip().rstrip('/')
+    url = re.sub(r'^https?://', '', url)
+    url = re.sub(r'^www\.', '', url)
+    return url.lower()
+
+
+def extract_url_from_hyperlink(cell_value):
+    if not cell_value:
+        return ""
+
+    cell_value = str(cell_value)
+    if hyperlink_match := re.search(r'HYPERLINK\s*\("([^"]+)"', cell_value):
+        return hyperlink_match.group(1)
+    return cell_value
+
+
+def urls_match(url1, url2):
+    return normalize_url(url1) == normalize_url(url2)
+
+
+
+def find_url_in_sheet(sheet, search_url):
+    if search_url == "":
+        return None
+
+    for row_idx, row in enumerate(sheet.iter_rows(min_row=1, values_only=True), 1):
+        for cell_value in (row[0], row[1]):
+            url = extract_url_from_hyperlink(cell_value)
+            if urls_match(url, search_url):
+                return row_idx
+    return None
+
+
+def update_row_in_sheet(sheet, row_idx, new_row):
+    for col, value in enumerate(new_row, 2):
+        sheet.cell(row=row_idx, column=col, value=value)
+
+
+def add_to_my_sheet(workbook, new_row):
+    sheet = workbook["MY"]
+    end_row = next(
+        (idx for idx, row in enumerate(sheet.iter_rows(min_col=1, max_col=1, values_only=True), 1)
+         if row[0] == "END"),
+        sheet.max_row + 1
+    )
+
+    print(f"\nAdding new row at position {end_row} in MY sheet")
+    sheet.cell(row=end_row, column=1, value="")
+    for col, value in enumerate(new_row, 2):
+        sheet.cell(row=end_row, column=col, value=value)
+    sheet.cell(row=end_row + 1, column=1, value="END")
+
+
+def update_excel(file_path, new_row):
+    """Update existing row in C1/C2 sheets or add to MY sheet."""
+    workbook = load_workbook(file_path)
+    url = new_row[0]
+
+    for sheet_name in ["C1", "C2"]:
+        if sheet_name in workbook.sheetnames:
+            sheet = workbook[sheet_name]
+            if existing_row := find_url_in_sheet(sheet, url):
+                print(f"\nURL found in {sheet_name} sheet at row {existing_row}. Updating information.")
+                update_row_in_sheet(sheet, existing_row, new_row)
+                workbook.save(file_path)
+                workbook.close()
+                return
+
+    print("\nURL not found in C1 or C2 sheets. Adding to MY sheet.")
+    add_to_my_sheet(workbook, new_row)
+    workbook.save(file_path)
+    workbook.close()
+
+
+def format_row_for_display(row):
+    return "\n".join(f"{header}: {value}" for header, value in zip(HEADERS, row))
+
+
+def process_cp_file(file_content, excel_file):
+    row_data = parse_cp_header(file_content)
+    print("\nProcessing data:")
+    print("-" * 50)
+    print(format_row_for_display(row_data))
+    print("-" * 50)
+    update_excel(excel_file, row_data)
+
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) < 2:
+        sys.exit(1)
+    file_content = sys.stdin.read()
+    process_cp_file(file_content, sys.argv[1])

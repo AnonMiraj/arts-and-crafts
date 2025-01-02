@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallery</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+
+        <header class="header">
+
+            <a href="../" class="back-link" id="backButton">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back
+            </a>
+
+            <div class="search-container" id="searchContainer">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search...">
+            </div>
+
+            <div class="sort-container">
+
+                <button id="sortCycleButton" class="sort-button">
+                    <span>Sort: Size</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 17l3 3 3-3" />
+                    </svg>
+                </button>
+                <button id="toggleSortOrderButton" class="sort-button">
+                    <span>Ascending</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 17l3 3 3-3" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="title-container" id="titleContainer">
+            <h1 class="page-title">{{manga_title}}</h1>
+        </div>
+        <div id="galleryGrid" class="gallery-grid">
+            {% for item in gallery_items %}
+            <div class="gallery-item" data-title="{{item.title|lower}}" data-size="{{item.size}}">
+                <a href="{{item.link}}" class="gallery-link" {% if item.new_tab %}target="_blank" {% endif %}>
+                    <div class="gallery-image-container">
+                        <img src="{{item.image_path}}" alt="{{item.title}}" class="gallery-image" loading="lazy">
+                    </div>
+                    <div class="gallery-title">
+                        <span>{{item.title}}</span>
+                        <span class="gallery-size">{{item.formatted_size}}</span>
+                        <span class="gallery-date">{{item.formatted_date}}</span>
+                    </div>
+                </a>
+                {% if item.images_path %}
+                <a href="{{item.images_path}}" class="gallery-button-container bottom-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    <span>Preview</span>
+                </a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script src="gallery.js"></script>
+</body>
+
+</html>
