@@ -5,6 +5,7 @@ import argparse
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 import urllib.parse
 import jinja2
+import sort
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -105,9 +106,14 @@ class GalleryHTTPRequestHandler(SimpleHTTPRequestHandler):
 
     def list_images(self, path, current_dir):
         valid_extensions = ['.jpg', '.jpeg', '.png', '.avif', '.gif', '.bmp', '.webp']
+
+        def numeric_prefix(filename):
+            match = re.match(r'(\d+)', filename)
+            return int(match.group(1)) if match else float('inf')
+
         images = sorted(
-            f for f in os.listdir(path)
-            if Path(f).suffix.lower() in valid_extensions
+            (f for f in os.listdir(path) if Path(f).suffix.lower() in valid_extensions),
+            key=numeric_prefix
         )
 
         template = env.get_template('image_gallery.html')
