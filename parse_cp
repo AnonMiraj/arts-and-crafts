@@ -59,7 +59,7 @@ def parse_cp_header(header_text):
         data['problem_code'], data['status'], data['submit_count'],
         data['reading_time'], data['thinking_time'], data['coding_time'],
         data['debug_time'], total_time, data['problem_level'],
-        data['by_yourself'], data['category'], data['comments']
+        data['by_yourself'], data['category'], data['comments'].replace(r'\n', '\n')
     ]
 
 
